@@ -1,10 +1,6 @@
 #include "CircleBuffer.h"
 
-size_t roundUp(size_t num, size_t multiple = 256)
-{
-	assert(multiple);
-	return ((num + multiple - 1) / multiple) * multiple;
-}
+
 
 size_t random(size_t min, size_t max)
 {
@@ -43,7 +39,7 @@ size_t randomString(char *s, const size_t maxSize) {
 
 void producer(DWORD delay, size_t memorySize, size_t numMessages, size_t msgSize)
 {
-	CircleBuffer producer(L"uniqueName", memorySize, true, msgSize); // CHUNKSIZE?!?!??
+	CircleBuffer producer(L"uniqueName", memorySize, true, 256); // CHUNKSIZE?!?!??
 
 	//while (producer.tryConnect())
 	//	Sleep(100);

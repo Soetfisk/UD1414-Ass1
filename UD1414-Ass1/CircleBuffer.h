@@ -16,20 +16,24 @@
 class CircleBuffer
 {
 private:
+	struct Control
+	{
+		size_t Head = 0;
+		size_t Tail = 0;
+		unsigned int clients = 0;
+	};
 	// your private stuff,
 	// implementation details, etc.
 	//
-	HANDLE hData, hControl;
+
+	size_t id;
+	HANDLE hData, hControl, hMutex;
 	LPCWSTR buffName;
 	size_t buffSize, chunkSize;
 	void *mData, * cData;
+	Control controller;
 
-	struct Control
-	{
-		size_t Head;
-		size_t Tail;
-		unsigned int clients;
-	};
+
 
 	struct Header
 	{
@@ -38,6 +42,9 @@ private:
 		size_t padding; // optional
 		// maybe number of consumers here?
 	};
+
+	size_t roundUp(size_t num, size_t multiple = 256);
+
 
 public:
 	// Constructor
