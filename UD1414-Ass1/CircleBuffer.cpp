@@ -42,7 +42,6 @@ CircleBuffer::CircleBuffer(LPCWSTR buffName, const size_t & buffSize, const bool
 	}
 	else {
 
-
 	}
 
 

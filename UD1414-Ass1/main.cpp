@@ -43,7 +43,7 @@ size_t randomString(char *s, const size_t maxSize) {
 
 void producer(DWORD delay, size_t memorySize, size_t numMessages, size_t msgSize)
 {
-	CircleBuffer producer(L"uniqueName", memorySize, true, msgSize);
+	CircleBuffer producer(L"uniqueName", memorySize, true, msgSize); // CHUNKSIZE?!?!??
 
 	//while (producer.tryConnect())
 	//	Sleep(100);
@@ -66,6 +66,9 @@ void producer(DWORD delay, size_t memorySize, size_t numMessages, size_t msgSize
 
 	while (numMessages != counter)
 	{
+		if (delay > 0)
+			Sleep(delay);
+
 		randomSize = randomString(buff, maxMsgSize);
 		while (true)
 		{
@@ -90,6 +93,9 @@ void consumer(DWORD delay, size_t memorySize, size_t numMessages, size_t msgSize
 	size_t len;
 
 	while (true)
+	{
+		if (delay > 0)
+			Sleep(delay);
 		if (consumer.pop(msg, len))
 		{
 			//msg = new char[len];
@@ -97,10 +103,10 @@ void consumer(DWORD delay, size_t memorySize, size_t numMessages, size_t msgSize
 			//delete msg;
 			break;
 		}
-			
+
 		else
 			Sleep(1);
-
+	}
 }
 
 int main(int argc, char*argv[])
