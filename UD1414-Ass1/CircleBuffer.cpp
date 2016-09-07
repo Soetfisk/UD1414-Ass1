@@ -169,19 +169,22 @@ bool CircleBuffer::pop(char * msg, size_t & length)
 
 	Header h;
 	int sizeOfHeader = sizeof(Header);
-
+	memcpy(&h, controller.Tail, sizeof(Header));
 
 	memcpy((char*)&controller, cData, sizeof(Control));		//read latest control data, perhaps mutexlock? Unless char* are Atomic, you don't want a corrupted char*.
-	memcpy(controller.Head, &h, sizeof(Header));
+	
 
 	size_t msgSize = roundUp(h.length + sizeof(Header), chunkSize) - sizeOfHeader;
 
 	if ((buffSize - sizeOfHeader) - (controller.Tail - mData) < msgSize)					//för o resetta på första platesen, kolla med length om den avrundade storleken hade överstigit minnesutrymmet. 
 		controller.Tail = (char*)mData;														//Att använda paremeter length är fewlt men vafan
-
-	memcpy(&h, controller.Tail, sizeof(Header));
-
+	
+	
 	h.readCount++;
+	memcpy(controller.Head, &h, sizeof(Header));
+	
+
+	
 	
 
 	memcpy(msg, (controller.Tail + sizeof(Header)), (h.length + h.padding));
