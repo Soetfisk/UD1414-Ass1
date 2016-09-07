@@ -18,6 +18,13 @@ CircleBuffer::CircleBuffer(LPCWSTR buffName, const size_t & buffSize, const bool
 	this->buffName = buffName;
 	this->buffSize = buffSize;
 	this->chunkSize = chunkSize;
+	this->chunkCount = 0;
+
+	bool * nums = new bool[buffSize];
+	for (int i = 0; i < buffSize; i += chunkSize)
+		chunkCount++;
+	delete nums;
+
 	id = 0;
 
 	LPCWSTR c = L"Control";
@@ -54,12 +61,26 @@ CircleBuffer::CircleBuffer(LPCWSTR buffName, const size_t & buffSize, const bool
 
 	hMutex = CreateMutex(NULL, false, mutexName);
 
+	memcpy((char*)&controller, cData, sizeof(Control));
+
 	if (isProducer)
 	{
-
+		if (controller.Head == nullptr)
+		{
+			controller.Head = (char*)mData;
+			memcpy(cData, (char*)&controller, sizeof(char*));
+		}
 	}
 	else {
-
+		controller.clients++;
+		if (controller.Tail == nullptr)
+		{
+			controller.Tail = (char*)mData;
+			memcpy(cData, ((char*)&controller+sizeof(char*)), sizeof(char*)+sizeof(unsigned int));
+		}
+		else {
+			memcpy(cData, ((char*)&controller + (sizeof(char*)*2)), sizeof(unsigned int));
+		}
 	}
 
 
@@ -86,18 +107,29 @@ bool CircleBuffer::push(const void * msg, size_t length)
 
 	memcpy((char*)&controller, cData, sizeof(Control)); //woop! looks like this works, references ftw
 
-	if ((buffSize - ((controller.Head - controller.Tail) * chunkSize)) > msgSize) //controller writespace check
+	controller.Head++;
+
+	size_t temp = (controller.Head - mData);
+	temp = (controller.Tail - mData);
+	temp = (buffSize - (controller.Head - mData));
+
+	if ((buffSize - (controller.Head - mData) - (controller.Tail - mData)) > msgSize) //check if there's enough space ahead
 	{
+		if ((buffSize - (controller.Head - mData)) < msgSize) //check if we're going past the end with the message
+			controller.Head = (char*)mData;			//if so: we move the Head to the beginning.
+
 		Header h;
 		h.id = this->id;
 		h.length = length;
 		h.padding = msgSize - (length + sizeOfHeader);
 
-		memcpy((char*)mData, &h, sizeOfHeader);
-		memcpy((char*)mData, msg, (msgSize - sizeOfHeader)); //offset on pointer, how?
+		memcpy(controller.Head, &h, sizeOfHeader);
+		controller.Head += sizeOfHeader;
+		memcpy(controller.Head, msg, (msgSize - sizeOfHeader)); //offset on pointer, how?
+		controller.Head += (msgSize - sizeOfHeader);
 
-		controller.Head++;									     // mutex check not needed, there's just one head
-		memcpy((char*)cData, &controller.Head, sizeof(size_t));	 // only write the head data
+		//controller.Head++;									     // mutex check not needed, there's just one head
+		memcpy((char*)cData, &controller.Head, sizeof(char*));	 // only write the head data
 
 		this->id++;
 
@@ -109,11 +141,11 @@ bool CircleBuffer::push(const void * msg, size_t length)
 
 bool CircleBuffer::pop(char * msg, size_t & length)
 {
-	Header h;
-	memcpy(&h, mData, sizeof(Header));
-	memcpy()
+	//Header h;
+	//memcpy(&h, mData, sizeof(Header));
+	//memcpy()
 
-	if ()
+	//if ()
 
 	return true;
 }

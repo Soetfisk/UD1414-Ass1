@@ -4,7 +4,7 @@
 
 size_t random(size_t min, size_t max)
 {
-	int range, result, cutoff;
+	size_t range, result, cutoff;
 
 	if (min >= max)
 		return min;
@@ -43,8 +43,6 @@ void producer(DWORD delay, size_t memorySize, size_t numMessages, size_t msgSize
 
 	//while (producer.tryConnect())
 	//	Sleep(100);
-
-
 
 	size_t maxMsgSize;
 	size_t randomSize = 0;

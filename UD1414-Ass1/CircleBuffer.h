@@ -18,8 +18,8 @@ class CircleBuffer
 private:
 	struct Control
 	{
-		size_t Head = 0;
-		size_t Tail = 0;
+		char* Head = nullptr;
+		char* Tail = nullptr;
 		unsigned int clients = 0;
 	};
 	// your private stuff,
@@ -29,7 +29,7 @@ private:
 	size_t id;
 	HANDLE hData, hControl, hMutex;
 	LPCWSTR buffName;
-	size_t buffSize, chunkSize;
+	size_t buffSize, chunkSize, chunkCount;
 	void *mData, * cData;
 	Control controller;
 
