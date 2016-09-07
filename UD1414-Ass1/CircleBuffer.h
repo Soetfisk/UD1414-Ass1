@@ -20,7 +20,7 @@ private:
 	{
 		char* Head = nullptr;
 		char* Tail = nullptr;
-		unsigned int clients = 0;
+		size_t clients = 0;
 	};
 	// your private stuff,
 	// implementation details, etc.
@@ -40,7 +40,7 @@ private:
 		size_t id;
 		size_t length;
 		size_t padding; // optional
-		// maybe number of consumers here?
+		size_t readCount = 0;// maybe number of consumers here?
 	};
 
 	size_t roundUp(size_t num, size_t multiple = 256);

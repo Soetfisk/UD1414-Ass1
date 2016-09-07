@@ -73,14 +73,18 @@ CircleBuffer::CircleBuffer(LPCWSTR buffName, const size_t & buffSize, const bool
 	}
 	else {
 		controller.clients++;
+		//mutexlock
+
 		if (controller.Tail == nullptr)
 		{
 			controller.Tail = (char*)mData;
-			memcpy(cData, ((char*)&controller+sizeof(char*)), sizeof(char*)+sizeof(unsigned int));
+			memcpy(cData, ((char*)&controller+sizeof(char*)), sizeof(char*)+sizeof(size_t));
 		}
 		else {
-			memcpy(cData, ((char*)&controller + (sizeof(char*)*2)), sizeof(unsigned int));
+			memcpy(cData, ((char*)&controller + (sizeof(char*)*2)), sizeof(size_t));
 		}
+
+		//mutexunlock
 	}
 
 
@@ -103,37 +107,58 @@ size_t CircleBuffer::canWrite()
 bool CircleBuffer::push(const void * msg, size_t length)
 {
 	int sizeOfHeader = sizeof(Header);
-	size_t msgSize = roundUp((length + sizeOfHeader), chunkSize);
+	size_t msgSize = roundUp((length + sizeOfHeader), chunkSize) - sizeOfHeader;
+
+
+	//if ((buffSize - hPos) < msgSize)					  //check if we're going past the end with the message
+	//	controller.Head = (char*)mData;					  //if so: we move the Head to the beginning.
+	//else
+	//	controller.Head += sizeOfHeader;;
 
 	memcpy((char*)&controller, cData, sizeof(Control)); //woop! looks like this works, references ftw
 
-	controller.Head++;
 
-	size_t temp = (controller.Head - mData);
-	temp = (controller.Tail - mData);
-	temp = (buffSize - (controller.Head - mData));
+	// size_t temp = (controller.Head - mData); <- this will give you the number of bytes the head has moved.
 
-	if ((buffSize - (controller.Head - mData) - (controller.Tail - mData)) > msgSize) //check if there's enough space ahead
+	size_t tPos = (controller.Tail - mData);
+	size_t hPos = (controller.Head - mData);
+	size_t htForwardDistance; //Available space forward, from head to tail
+
+	if (hPos < tPos)
+		htForwardDistance = tPos - hPos;
+	else
+		htForwardDistance = (buffSize - (hPos - tPos));
+
+	if (htForwardDistance > msgSize + sizeOfHeader) //is there room for the message?
 	{
-		if ((buffSize - (controller.Head - mData)) < msgSize) //check if we're going past the end with the message
-			controller.Head = (char*)mData;			//if so: we move the Head to the beginning.
-
 		Header h;
 		h.id = this->id;
 		h.length = length;
 		h.padding = msgSize - (length + sizeOfHeader);
 
 		memcpy(controller.Head, &h, sizeOfHeader);
-		controller.Head += sizeOfHeader;
-		memcpy(controller.Head, msg, (msgSize - sizeOfHeader)); //offset on pointer, how?
-		controller.Head += (msgSize - sizeOfHeader);
 
-		//controller.Head++;									     // mutex check not needed, there's just one head
-		memcpy((char*)cData, &controller.Head, sizeof(char*));	 // only write the head data
 
-		this->id++;
+		if ((buffSize - sizeOfHeader - hPos) > (msgSize)) //check if we're going past the end with the message
+		{												  //if so: we move the Head to the beginning.
+			controller.Head += sizeOfHeader;
+		}
+		else
+		{
+			controller.Head = (char*)mData;
+		}
+
+		memcpy(controller.Head, msg, (msgSize));
+		controller.Head += (msgSize);
+
+																	 // mutex check not needed, there's just one head
+		memcpy((char*)cData, &controller.Head, sizeof(char*));		 // only write the head data into control memory
+
+		this->id++;													 //iterate msg id
 
 		return true;
+
+
 	}
 	else
 		return false;
@@ -141,11 +166,43 @@ bool CircleBuffer::push(const void * msg, size_t length)
 
 bool CircleBuffer::pop(char * msg, size_t & length)
 {
-	//Header h;
-	//memcpy(&h, mData, sizeof(Header));
-	//memcpy()
 
-	//if ()
+	Header h;
+	int sizeOfHeader = sizeof(Header);
+
+
+	memcpy((char*)&controller, cData, sizeof(Control));		//read latest control data, perhaps mutexlock? Unless char* are Atomic, you don't want a corrupted char*.
+	memcpy(controller.Head, &h, sizeof(Header));
+
+	size_t msgSize = roundUp(h.length + sizeof(Header), chunkSize) - sizeOfHeader;
+
+	if ((buffSize - sizeOfHeader) - (controller.Tail - mData) < msgSize)					//för o resetta på första platesen, kolla med length om den avrundade storleken hade överstigit minnesutrymmet. 
+		controller.Tail = (char*)mData;														//Att använda paremeter length är fewlt men vafan
+
+	memcpy(&h, controller.Tail, sizeof(Header));
+
+	h.readCount++;
+	
+
+	memcpy(msg, (controller.Tail + sizeof(Header)), (h.length + h.padding));
+
+	//MOVE TAIL STUFF
+	
+	if (h.readCount == controller.clients)
+	{
+		if (controller.Tail == mData);
+			//nothing	
+		else
+			controller.Tail += msgSize;
+		//MUTEXLOCK
+		memcpy(cData, ((char*)&controller + sizeof(char*)), (sizeof(char*) + sizeof(size_t)));
+		//MUTEXUNLOCK
+	}
+	else {
+		//MUTEXLOCK
+		memcpy(cData, ((char*)&controller + (sizeof(char*) * 2)), sizeof(size_t));
+		//MUTEXUNLOCK
+	}
 
 	return true;
 }
