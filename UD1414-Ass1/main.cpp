@@ -41,6 +41,8 @@ void producer(DWORD delay, size_t memorySize, size_t numMessages, size_t msgSize
 {
 	CircleBuffer producer(L"uniqueName", memorySize, true, 256); // CHUNKSIZE?!?!??
 
+
+
 	//while (producer.tryConnect())
 	//	Sleep(100);
 
@@ -49,12 +51,8 @@ void producer(DWORD delay, size_t memorySize, size_t numMessages, size_t msgSize
 	size_t totalSent = 0;
 	int counter = 0;
 
-	if (msgSize == 0)
+	if (msgSize == 0 /*|| msgSize > (memorySize / 4)*/)
 		maxMsgSize = (memorySize / 4);
-	else
-	{
-		maxMsgSize = msgSize;
-	}
 
 	char* buff = new char[maxMsgSize];
 

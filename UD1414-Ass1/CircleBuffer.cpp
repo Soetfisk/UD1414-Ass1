@@ -57,32 +57,30 @@ CircleBuffer::CircleBuffer(LPCWSTR buffName, const size_t & buffSize, const bool
 		sizeof(Control),
 		controlName
 	);
-	cData = MapViewOfFile(hControl, FILE_MAP_ALL_ACCESS, 0, 0, 0);
+	controller = (Control*)MapViewOfFile(hControl, FILE_MAP_ALL_ACCESS, 0, 0, 0);
 
-	hMutex = CreateMutex(NULL, false, mutexName);
-
-	memcpy((char*)&controller, cData, sizeof(Control));
 
 	if (isProducer)
 	{
-		if (controller.Head == nullptr)
+		if (controller->Head == nullptr)
 		{
-			controller.Head = (char*)mData;
-			memcpy(cData, (char*)&controller, sizeof(char*));
+			controller->Head = (char*)mData;
 		}
 	}
 	else {
-		controller.clients++;
 		//mutexlock
 
-		if (controller.Tail == nullptr)
+		
+		
+		if (controller->Tail == nullptr)
 		{
-			controller.Tail = (char*)mData;
-			memcpy(cData, ((char*)&controller+sizeof(char*)), sizeof(char*)+sizeof(size_t));
+			controller->clients = 0;
+			controller->Tail = (char*)mData;
 		}
 		else {
 			memcpy(cData, ((char*)&controller + (sizeof(char*)*2)), sizeof(size_t));
 		}
+
 
 		//mutexunlock
 	}

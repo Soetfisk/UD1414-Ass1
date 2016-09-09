@@ -20,7 +20,7 @@ private:
 	{
 		char* Head = nullptr;
 		char* Tail = nullptr;
-		size_t clients = 0;
+		size_t* clients;
 	};
 	// your private stuff,
 	// implementation details, etc.
@@ -31,7 +31,7 @@ private:
 	LPCWSTR buffName;
 	size_t buffSize, chunkSize, chunkCount;
 	void *mData, * cData;
-	Control controller;
+	Control * controller;
 
 
 
@@ -58,6 +58,7 @@ public:
 	CircleBuffer();
 	~CircleBuffer();
 
+	size_t sizeOfHeader = sizeof(Header);		//UGLYHAX
 
 	bool isValid();    // return true if there's a valid handle
 	size_t canRead();  // returns how many bytes are available for reading.
