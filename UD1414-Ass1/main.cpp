@@ -39,29 +39,28 @@ size_t randomString(char *s, const size_t maxSize) {
 
 void producer(DWORD delay, size_t memorySize, size_t numMessages, size_t msgSize)
 {
-	CircleBuffer producer(L"uniqueName", memorySize, true, 256); // CHUNKSIZE?!?!??
+	CircleBuffer producer(L"uniqueName", memorySize, true, 256);
 
 
 
 	//while (producer.tryConnect())
 	//	Sleep(100);
 
-	size_t maxMsgSize;
 	size_t randomSize = 0;
 	size_t totalSent = 0;
 	int counter = 0;
 
 	if (msgSize == 0 /*|| msgSize > (memorySize / 4)*/)
-		maxMsgSize = (memorySize / 4);
+		msgSize = (memorySize / 4);
 
-	char* buff = new char[maxMsgSize];
+	char* buff = new char[msgSize];
 
 	while (numMessages != counter)
 	{
 		if (delay > 0)
 			Sleep(delay);
 
-		randomSize = randomString(buff, maxMsgSize);
+		randomSize = randomString(buff, msgSize);
 		while (true)
 		{
 			if (producer.push(buff, randomSize))
@@ -81,14 +80,14 @@ void consumer(DWORD delay, size_t memorySize, size_t numMessages, size_t msgSize
 	CircleBuffer consumer(L"uniqueName", memorySize, false, msgSize);
 	//assert(consumer.isValid())
 
-	char* msg;
+	char msg;
 	size_t len;
 
 	while (true)
 	{
 		if (delay > 0)
 			Sleep(delay);
-		if (consumer.pop(msg, len))
+		if (consumer.pop(&msg, len))
 		{
 			//msg = new char[len];
 			printf("%s\n", msg);
@@ -121,17 +120,18 @@ int main(int argc, char*argv[])
 
 	if (std::strcmp("producer", argv[1]) == 0)
 	{
-		printf("produceeeeer, %d %d %d %d\n", delay, memorySize, numMessages, msgSize);
+		//printf("produceeeeer, %d %d %d %d\n", delay, memorySize, numMessages, msgSize);
 		producer(delay, memorySize << 10, numMessages, msgSize);
 	}
 
 	if (std::strcmp("consumer", argv[1]) == 0)
 	{
-		printf("consuuuuumeer, %d %d %d %d\n", delay, memorySize, numMessages, msgSize);
+		//printf("consuuuuumeer, %d %d %d %d\n", delay, memorySize, numMessages, msgSize);
 		consumer(delay, memorySize << 10, numMessages, msgSize);
 	}
 
 	getchar();
+
 	return 0;
 }
 

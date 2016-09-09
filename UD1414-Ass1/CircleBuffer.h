@@ -18,32 +18,32 @@ class CircleBuffer
 private:
 	struct Control
 	{
-		char* Head = nullptr;
-		char* Tail = nullptr;
-		size_t* clients;
+		size_t * Head;
+		size_t * Tail;
+		size_t * freeMem;
+		size_t * clients;
 	};
 	// your private stuff,
 	// implementation details, etc.
 	//
 
-	size_t id;
 	HANDLE hData, hControl, hMutex;
-	LPCWSTR buffName;
-	size_t buffSize, chunkSize, chunkCount;
-	void *mData, * cData;
+	size_t buffSize, chunkSize/*, chunkCount*/;
+	size_t * HEAD, * TAIL, * FREEMEM, * CLIENTS; //USE MUTEX IN PRODUCER WHEN WRITING
+	char* mData;
 	Control * controller;
 
-
+	
 
 	struct Header
 	{
 		size_t id;
 		size_t length;
 		size_t padding; // optional
-		size_t readCount = 0;// maybe number of consumers here?
+		size_t readCount;
 	};
 
-	size_t roundUp(size_t num, size_t multiple = 256);
+	inline size_t roundUp(size_t num, size_t multiple = 256);
 
 
 public:
