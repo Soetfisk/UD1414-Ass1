@@ -1,24 +1,6 @@
 #include "CircleBuffer.h"
 
-
-
-size_t random(size_t min, size_t max)
-{
-	size_t range, result, cutoff;
-
-	if (min >= max)
-		return min;
-	range = max - min + 1;
-	cutoff = (RAND_MAX / range) * range;
-
-	do {
-		result = rand();
-	} while (result >= cutoff);
-
-	return result % range + min;
-}
-
-void gen_random(char *s, const int len) {
+inline void gen_random(char *s, const int len) {
 	static const char alphanum[] =
 		"0123456789"
 		"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -30,21 +12,17 @@ void gen_random(char *s, const int len) {
 	s[len] = 0;
 }
 
-
 void producer(DWORD delay, size_t memorySize, size_t numMessages, size_t msgSize)
 {
 	CircleBuffer producer(L"uniqueName", memorySize, true, 256);
-
-	//while (producer.tryConnect())
-	//	Sleep(100);
 
 	size_t totalSent = 0;
 	int counter = 0;
 
 	if (msgSize == 0 /*|| msgSize > ((memorySize / 4)- 32)*/)
-		msgSize = (memorySize / 4) - 32;
+		msgSize = (memorySize / 4) - producer.sizeOfHeader;
 	else
-		msgSize -= 32;
+		msgSize -= producer.sizeOfHeader;
 
 	char* buff = new char[msgSize];
 
@@ -69,13 +47,12 @@ void producer(DWORD delay, size_t memorySize, size_t numMessages, size_t msgSize
 }
 void consumer(DWORD delay, size_t memorySize, size_t numMessages, size_t msgSize)
 {
-	CircleBuffer consumer(L"uniqueName", memorySize, false, msgSize);
-	//assert(consumer.isValid())
+	CircleBuffer consumer(L"uniqueName", memorySize, false, 256);
 
 	if (msgSize == 0 /*|| msgSize > (memorySize / 4)-32*/)
-		msgSize = (memorySize / 4) - 32;
+		msgSize = (memorySize / 4) - consumer.sizeOfHeader;
 	else
-		msgSize -= 32;
+		msgSize -= consumer.sizeOfHeader;
 
 	char * msg = new char[msgSize]; 
 	size_t len;
@@ -88,14 +65,11 @@ void consumer(DWORD delay, size_t memorySize, size_t numMessages, size_t msgSize
 		if (consumer.pop(msg, len)) //using a &* could make the ringbuffer able to handle initalization instead
 		{
 			counter++;
-			//msg = new char[len];
 			printf("%d. %s\n",counter, msg);
-			//delete msg;
 		}
 		else
 			Sleep(1);
 	}
-
 	delete msg;
 }
 
@@ -119,17 +93,13 @@ int main(int argc, char*argv[])
 
 	if (std::strcmp("producer", argv[1]) == 0)
 	{
-		//printf("produceeeeer, %d %d %d %d\n", delay, memorySize, numMessages, msgSize);
 		producer(delay, memorySize << 10, numMessages, msgSize);
 	}
 
 	if (std::strcmp("consumer", argv[1]) == 0)
 	{
-		//printf("consuuuuumeer, %d %d %d %d\n", delay, memorySize, numMessages, msgSize);
 		consumer(delay, memorySize << 10, numMessages, msgSize);
 	}
-
-	//getchar();
 
 	return 0;
 }

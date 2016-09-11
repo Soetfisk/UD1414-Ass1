@@ -4,7 +4,7 @@ CircleBuffer::CircleBuffer()
 {
 }
 
-inline size_t CircleBuffer::roundUp(size_t num, size_t multiple)
+size_t CircleBuffer::roundUp(size_t num, size_t multiple)
 {
 	assert(multiple);
 	return ((num + multiple - 1) / multiple) * multiple;
@@ -12,18 +12,10 @@ inline size_t CircleBuffer::roundUp(size_t num, size_t multiple)
 
 CircleBuffer::CircleBuffer(LPCWSTR buffName, const size_t & buffSize, const bool & isProducer, const size_t & chunkSize)
 {
-
 	this->hControl = NULL;
 	this->hData = NULL;
 	this->buffSize = buffSize;
 	this->chunkSize = chunkSize;
-	//this->chunkCount = 0;
-
-	//bool * nums = new bool[buffSize];
-	//for (int i = 0; i < buffSize; i += chunkSize)
-	//	chunkCount++;
-	//delete nums;
-
 
 	DWORD dw;
 	LPCWSTR c = L"Control";
@@ -36,6 +28,8 @@ CircleBuffer::CircleBuffer(LPCWSTR buffName, const size_t & buffSize, const bool
 	tempwstrm = std::wstring(buffName) + m;
 	LPCWSTR mutexName = tempwstrm.c_str();
 
+	hMutex = CreateMutex(NULL, false, mutexName);
+	
 	hData = CreateFileMapping
 	(
 		INVALID_HANDLE_VALUE,
@@ -45,8 +39,7 @@ CircleBuffer::CircleBuffer(LPCWSTR buffName, const size_t & buffSize, const bool
 		buffSize,
 		buffName
 	);
-
-
+	
 	mData = (char*)MapViewOfFile(hData, FILE_MAP_ALL_ACCESS, 0, 0, buffSize);
 
 	hControl = CreateFileMapping
@@ -55,54 +48,35 @@ CircleBuffer::CircleBuffer(LPCWSTR buffName, const size_t & buffSize, const bool
 		NULL,
 		PAGE_READWRITE,
 		0,
-		sizeof(size_t)*4,
+		sizeof(size_t)*3,
 		controlName
 	);
 
 	dw = GetLastError();
 
-	controller = (size_t*)MapViewOfFile(hControl, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(size_t) * 4);
-	
+	controller = (size_t*)MapViewOfFile(hControl, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(size_t) * 3);
 	
 	if (!(dw == ERROR_ALREADY_EXISTS))
 	{
 		controller[0] = 0;
 		controller[1] = 0;
-		controller[2] = buffSize;
-		controller[3] = 0;
+		controller[2] = 0;
 	}
-
 
 	HEAD = controller;
 	TAIL = HEAD + 1;
-	FREEMEM = TAIL + 1;
-	CLIENTS = FREEMEM + 1;
+	CLIENTS = TAIL + 1;
 
-	if (isProducer)
+	if (!isProducer)
 	{
-
-	}
-	else {
-		//mutexlock
+		WaitForSingleObject(hMutex, INFINITE); //mutexlock
 		CLIENTS++;
-		//mutexunlock
+		ReleaseMutex(hMutex); //mutexunlock
 	}
-
-
 }
 
 CircleBuffer::~CircleBuffer()
 {
-}
-
-size_t CircleBuffer::canRead()
-{
-	return size_t();
-}
-
-size_t CircleBuffer::canWrite()
-{
-	return size_t();
 }
 
 bool CircleBuffer::push(const void * msg, size_t length)
@@ -117,7 +91,6 @@ bool CircleBuffer::push(const void * msg, size_t length)
 	else if (*TAIL < *HEAD)
 		freeMem = ((buffSize -*HEAD) - *TAIL);
 
-	/*if (msgSize < (*FREEMEM - 1))*/
 	if (msgSize < freeMem)
 	{
 		Header h
@@ -129,7 +102,7 @@ bool CircleBuffer::push(const void * msg, size_t length)
 		};
 
 		memcpy(mData + *HEAD, &h, sizeOfHeader);
-		memcpy((mData + *HEAD + sizeOfHeader), msg, msgSize - sizeOfHeader);
+		memcpy((mData + *HEAD + sizeOfHeader), msg, length);
 		freeMem -= msgSize;
 
 		*HEAD = (*HEAD + msgSize) % buffSize;
@@ -150,29 +123,16 @@ bool CircleBuffer::pop(char * msg, size_t & length)
 
 		memcpy(msg, mData + localTail + sizeOfHeader, length);
 
-
 		localTail = (localTail + length + h->padding) % buffSize;
 
-		//add mutex and check if the tail's gonna move for multiple client supports
+		WaitForSingleObject(hMutex, INFINITE);
 		h->readCount++;
+		ReleaseMutex(hMutex);
+
 		if (h->readCount == *CLIENTS)
 			*TAIL = localTail;
-		//if next head (tailpos == headpos), wait for it to move
 		return	true;
 	}
 	else
 		return false;
-
-}
-
-bool CircleBuffer::isValid()
-{
-	if (hData == NULL)
-	{
-		//hData = OpenFileMapping(FILE_MAP_ALL_ACCESS, false, this->buffName);
-		//tail = MapViewOfFile(hData, FILE_MAP_ALL_ACCESS, 0, 0, 0);
-		return false;
-	}
-	else
-		return true;
 }

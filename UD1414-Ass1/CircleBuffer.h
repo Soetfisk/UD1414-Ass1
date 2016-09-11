@@ -3,10 +3,10 @@
 #include <Windows.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <iostream>
 #include <string.h>
 #include <assert.h>
 #include <time.h>
+#include <mutex>
 
 #ifndef CIRCLEBUFFER_H
 #define CIRCLEBUFFER
@@ -16,13 +16,6 @@
 class CircleBuffer
 {
 private:
-	struct Control
-	{
-		size_t * Head;
-		size_t * Tail;
-		size_t * freeMem;
-		size_t * clients;
-	};
 	// your private stuff,
 	// implementation details, etc.
 	//
@@ -32,9 +25,7 @@ private:
 	size_t * HEAD, * TAIL, * FREEMEM, * CLIENTS; //USE MUTEX IN PRODUCER WHEN WRITING
 	char* mData;
 	size_t * controller;
-
 	
-
 	struct Header
 	{
 		size_t id;
@@ -43,9 +34,9 @@ private:
 		size_t readCount;
 	};
 
-	inline size_t roundUp(size_t num, size_t multiple = 256);
+	size_t roundUp(size_t num, size_t multiple = 256);
 
-
+	CircleBuffer();
 public:
 	// Constructor
 	CircleBuffer(
@@ -55,14 +46,11 @@ public:
 		const size_t& chunkSize);  // round up messages to multiple of this.
 
 								   // Destructor
-	CircleBuffer();
+
 	~CircleBuffer();
 
 	size_t sizeOfHeader = sizeof(Header);		//UGLYHAX
 
-	bool isValid();    // return true if there's a valid handle
-	size_t canRead();  // returns how many bytes are available for reading.
-	size_t canWrite(); // returns how many bytes are free in the buffer.
 					   // try to send a message through the buffer,
 					   // if returns true then it succeeded, otherwise the message has not been sent.
 					   // it should return false if the buffer does not have enough space.
