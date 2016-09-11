@@ -1,0 +1,1 @@
+seq 1 | xargs -I{} python test1414.py | grep -e Test -e Time | paste -d " " - - | cat -n
