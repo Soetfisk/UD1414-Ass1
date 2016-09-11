@@ -31,7 +31,7 @@ private:
 	size_t buffSize, chunkSize/*, chunkCount*/;
 	size_t * HEAD, * TAIL, * FREEMEM, * CLIENTS; //USE MUTEX IN PRODUCER WHEN WRITING
 	char* mData;
-	Control * controller;
+	size_t * controller;
 
 	
 

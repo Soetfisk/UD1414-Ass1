@@ -51,7 +51,9 @@ void producer(DWORD delay, size_t memorySize, size_t numMessages, size_t msgSize
 	int counter = 0;
 
 	if (msgSize == 0 /*|| msgSize > (memorySize / 4)*/)
-		msgSize = (memorySize / 4);
+		msgSize = (memorySize / 4) - 32;
+	else
+		msgSize -= 32;
 
 	char* buff = new char[msgSize];
 
@@ -65,7 +67,7 @@ void producer(DWORD delay, size_t memorySize, size_t numMessages, size_t msgSize
 		{
 			if (producer.push(buff, randomSize))
 			{
-				printf("%s\n", buff);
+				//printf("%s\n", buff);
 				totalSent += randomSize;
 				counter++;
 				break;
@@ -74,30 +76,38 @@ void producer(DWORD delay, size_t memorySize, size_t numMessages, size_t msgSize
 				Sleep(1);
 		}
 	}
+	delete buff;
 }
 void consumer(DWORD delay, size_t memorySize, size_t numMessages, size_t msgSize)
 {
 	CircleBuffer consumer(L"uniqueName", memorySize, false, msgSize);
 	//assert(consumer.isValid())
 
-	char msg;
-	size_t len;
+	if (msgSize == 0 /*|| msgSize > (memorySize / 4)*/)
+		msgSize = (memorySize / 4) - 32;
+	else
+		msgSize -= 32;
 
-	while (true)
+	char * msg = new char[msgSize]; 
+	size_t len;
+	size_t counter = 0;
+
+	while (numMessages < counter)
 	{
 		if (delay > 0)
 			Sleep(delay);
-		if (consumer.pop(&msg, len))
+		if (consumer.pop(msg, len)) //using a &* could make the ringbuffer able to handle initalization instead
 		{
+			counter++;
 			//msg = new char[len];
-			printf("%s\n", msg);
+			printf("%d. %s\n",counter, msg);
 			//delete msg;
-			break;
 		}
-
 		else
 			Sleep(1);
 	}
+
+	delete msg;
 }
 
 int main(int argc, char*argv[])
@@ -130,7 +140,7 @@ int main(int argc, char*argv[])
 		consumer(delay, memorySize << 10, numMessages, msgSize);
 	}
 
-	getchar();
+	//getchar();
 
 	return 0;
 }
