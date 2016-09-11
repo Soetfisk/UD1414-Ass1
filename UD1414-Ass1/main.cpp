@@ -18,39 +18,30 @@ size_t random(size_t min, size_t max)
 	return result % range + min;
 }
 
-size_t randomString(char *s, const size_t maxSize) {
-
-	size_t rLen = random(1, maxSize);
+void gen_random(char *s, const int len) {
 	static const char alphanum[] =
 		"0123456789"
 		"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 		"abcdefghijklmnopqrstuvwxyz";
 
-	for (int i = 0; i < rLen; ++i) {
-		s[i] = alphanum[random(1, sizeof(alphanum))];
+	for (auto i = 0; i < len; ++i) {
+		s[i] = alphanum[rand() % (sizeof(alphanum) - 1)];
 	}
-
-	s[rLen] = '\0';
-
-	return rLen;
+	s[len] = 0;
 }
-
 
 
 void producer(DWORD delay, size_t memorySize, size_t numMessages, size_t msgSize)
 {
 	CircleBuffer producer(L"uniqueName", memorySize, true, 256);
 
-
-
 	//while (producer.tryConnect())
 	//	Sleep(100);
 
-	size_t randomSize = 0;
 	size_t totalSent = 0;
 	int counter = 0;
 
-	if (msgSize == 0 /*|| msgSize > (memorySize / 4)*/)
+	if (msgSize == 0 /*|| msgSize > ((memorySize / 4)- 32)*/)
 		msgSize = (memorySize / 4) - 32;
 	else
 		msgSize -= 32;
@@ -62,13 +53,11 @@ void producer(DWORD delay, size_t memorySize, size_t numMessages, size_t msgSize
 		if (delay > 0)
 			Sleep(delay);
 
-		randomSize = randomString(buff, msgSize);
+		gen_random(buff, msgSize);
 		while (true)
 		{
-			if (producer.push(buff, randomSize))
+			if (producer.push(buff, msgSize))
 			{
-				//printf("%s\n", buff);
-				totalSent += randomSize;
 				counter++;
 				break;
 			}
@@ -83,7 +72,7 @@ void consumer(DWORD delay, size_t memorySize, size_t numMessages, size_t msgSize
 	CircleBuffer consumer(L"uniqueName", memorySize, false, msgSize);
 	//assert(consumer.isValid())
 
-	if (msgSize == 0 /*|| msgSize > (memorySize / 4)*/)
+	if (msgSize == 0 /*|| msgSize > (memorySize / 4)-32*/)
 		msgSize = (memorySize / 4) - 32;
 	else
 		msgSize -= 32;
