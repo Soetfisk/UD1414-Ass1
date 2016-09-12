@@ -69,9 +69,9 @@ CircleBuffer::CircleBuffer(LPCWSTR buffName, const size_t & buffSize, const bool
 
 	if (!isProducer)
 	{
-		WaitForSingleObject(hMutex, INFINITE); //mutexlock
-		CLIENTS++;
-		ReleaseMutex(hMutex); //mutexunlock
+		//WaitForSingleObject(hMutex, INFINITE); //mutexlock
+		*CLIENTS += 1;
+		//ReleaseMutex(hMutex); //mutexunlock
 	}
 }
 
@@ -83,16 +83,25 @@ bool CircleBuffer::push(const void * msg, size_t length)
 {
 	static size_t msgId = 0;
 	static size_t freeMem = buffSize;
+	static size_t lastTail = *TAIL;
 	size_t msgSize = roundUp(length + sizeOfHeader);
+	size_t localTail = *TAIL;
+
+	if (localTail > *HEAD)
+		freeMem = (localTail - *HEAD);
+	else if (localTail < *HEAD)
+		freeMem = ((buffSize - *HEAD) - localTail);
+	//else if (localTail == *HEAD && lastTail != localTail)
+	//	freeMem = buffSize;
 
 
-	if (*TAIL > *HEAD)
-		freeMem = (*TAIL - *HEAD);
-	else if (*TAIL < *HEAD)
-		freeMem = ((buffSize -*HEAD) - *TAIL);
-
-	if (msgSize < freeMem)
+	if (msgSize <= freeMem)
 	{
+		lastTail = localTail;
+		size_t nextPos = (*HEAD + msgSize) % buffSize;
+		if (nextPos == localTail)
+			return false;
+
 		Header h
 		{
 			msgId++,
@@ -105,7 +114,7 @@ bool CircleBuffer::push(const void * msg, size_t length)
 		memcpy((mData + *HEAD + sizeOfHeader), msg, length);
 		freeMem -= msgSize;
 
-		*HEAD = (*HEAD + msgSize) % buffSize;
+		*HEAD = nextPos;
 		return true;
 	}
 	else
@@ -115,15 +124,19 @@ bool CircleBuffer::push(const void * msg, size_t length)
 bool CircleBuffer::pop(char * msg, size_t & length)
 {
 	static size_t localTail = *TAIL;
+	//static Header * h = nullptr;
 
 	if (localTail != *HEAD)
-	{
+	{	
 		Header * h = (Header*)(mData + localTail);
 		length = h->length;
+		size_t nextPos = (localTail + length + h->padding) % buffSize;
+		if (nextPos == *HEAD)
+			return false;
 
 		memcpy(msg, mData + localTail + sizeOfHeader, length);
 
-		localTail = (localTail + length + h->padding) % buffSize;
+		localTail = nextPos;
 
 		WaitForSingleObject(hMutex, INFINITE);
 		h->readCount++;

@@ -9,7 +9,7 @@ inline void gen_random(char *s, const int len) {
 	for (auto i = 0; i < len; ++i) {
 		s[i] = alphanum[rand() % (sizeof(alphanum) - 1)];
 	}
-	s[len] = 0;
+	s[len-1] = '\0';
 }
 
 void producer(DWORD delay, size_t memorySize, size_t numMessages, size_t msgSize)
@@ -37,6 +37,7 @@ void producer(DWORD delay, size_t memorySize, size_t numMessages, size_t msgSize
 			if (producer.push(buff, msgSize))
 			{
 				counter++;
+				printf("%d. %s\n", counter, buff);
 				break;
 			}
 			else
@@ -58,7 +59,7 @@ void consumer(DWORD delay, size_t memorySize, size_t numMessages, size_t msgSize
 	size_t len;
 	size_t counter = 0;
 
-	while (numMessages < counter)
+	while (numMessages > counter)
 	{
 		if (delay > 0)
 			Sleep(delay);
