@@ -26,7 +26,7 @@ void producer(DWORD delay, size_t memorySize, size_t numMessages, size_t msgSize
 
 	char* buff = new char[msgSize];
 
-	while (numMessages != counter)
+	while (numMessages >= counter)
 	{
 		if (delay > 0)
 			Sleep(delay);
@@ -59,7 +59,7 @@ void consumer(DWORD delay, size_t memorySize, size_t numMessages, size_t msgSize
 	size_t len;
 	size_t counter = 0;
 
-	while (numMessages > counter)
+	while (numMessages >= counter)
 	{
 		if (delay > 0)
 			Sleep(delay);
