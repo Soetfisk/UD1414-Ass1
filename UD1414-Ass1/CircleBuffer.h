@@ -20,9 +20,9 @@ private:
 	// implementation details, etc.
 	//
 
-	HANDLE hData, hControl, hMutex;
+	HANDLE hData, hControl, hMemMutex, hClientMutex, hReadMutex;
 	size_t buffSize, chunkSize/*, chunkCount*/;
-	size_t * HEAD, * TAIL, * FREEMEM, * CLIENTS; //USE MUTEX IN PRODUCER WHEN WRITING
+	size_t * HEAD, * TAIL, * CLIENTS, * FREEMEM; //USE MUTEX IN PRODUCER WHEN WRITING
 	char* mData;
 	size_t * controller;
 	

@@ -17,16 +17,17 @@ void producer(DWORD delay, size_t memorySize, size_t numMessages, size_t msgSize
 	CircleBuffer producer(L"uniqueName", memorySize, true, 256);
 
 	size_t totalSent = 0;
-	int counter = 0;
+	size_t counter = 0;
 
 	if (msgSize == 0 /*|| msgSize > ((memorySize / 4)- 32)*/)
-		msgSize = (memorySize / 4) - producer.sizeOfHeader;
+		msgSize = rand() % (((memorySize / 4) - producer.sizeOfHeader) - 1);
+		//msgSize = (memorySize / 4) - producer.sizeOfHeader;
 	else
 		msgSize -= producer.sizeOfHeader;
 
 	char* buff = new char[msgSize];
 
-	while (numMessages >= counter)
+	while (numMessages > counter)
 	{
 		if (delay > 0)
 			Sleep(delay);
@@ -51,7 +52,9 @@ void consumer(DWORD delay, size_t memorySize, size_t numMessages, size_t msgSize
 	CircleBuffer consumer(L"uniqueName", memorySize, false, 256);
 
 	if (msgSize == 0 /*|| msgSize > (memorySize / 4)-32*/)
-		msgSize = (memorySize / 4) - consumer.sizeOfHeader;
+
+		msgSize = rand() % (((memorySize / 4) - consumer.sizeOfHeader) - 1);
+		//msgSize = (memorySize / 4) - consumer.sizeOfHeader;
 	else
 		msgSize -= consumer.sizeOfHeader;
 
@@ -59,7 +62,7 @@ void consumer(DWORD delay, size_t memorySize, size_t numMessages, size_t msgSize
 	size_t len;
 	size_t counter = 0;
 
-	while (numMessages >= counter)
+	while (numMessages > counter)
 	{
 		if (delay > 0)
 			Sleep(delay);

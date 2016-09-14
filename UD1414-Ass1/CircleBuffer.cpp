@@ -19,17 +19,28 @@ CircleBuffer::CircleBuffer(LPCWSTR buffName, const size_t & buffSize, const bool
 
 	DWORD dw;
 	LPCWSTR c = L"Control";
-	LPCWSTR m = L"Mutex";
-	std::wstring tempwstrc, tempwstrm;
+	LPCWSTR m = L"mMutex";
+	LPCWSTR cl = L"clMutex";
+	LPCWSTR r = L"rMutex";
+	std::wstring tempwstrc, tempwstrmm, tempwstrmc, tempwstrmr;
 
 	tempwstrc = std::wstring(buffName) + c;
 	LPCWSTR controlName = tempwstrc.c_str();
 
-	tempwstrm = std::wstring(buffName) + m;
-	LPCWSTR mutexName = tempwstrm.c_str();
+	tempwstrmm = std::wstring(buffName) + m;
+	LPCWSTR memMutex = tempwstrmm.c_str();
 
-	hMutex = CreateMutex(NULL, false, mutexName);
-	
+	tempwstrmc = std::wstring(buffName) + m;
+	LPCWSTR cliMutex = tempwstrmc.c_str();
+
+	tempwstrmr = std::wstring(buffName) + m;
+	LPCWSTR reaMutex = tempwstrmr.c_str();
+
+
+	hMemMutex = CreateMutex(NULL, false, memMutex);
+	hClientMutex = CreateMutex(NULL, false, cliMutex);
+	hReadMutex = CreateMutex(NULL, false, reaMutex);
+
 	hData = CreateFileMapping
 	(
 		INVALID_HANDLE_VALUE,
@@ -48,30 +59,32 @@ CircleBuffer::CircleBuffer(LPCWSTR buffName, const size_t & buffSize, const bool
 		NULL,
 		PAGE_READWRITE,
 		0,
-		sizeof(size_t)*3,
+		sizeof(size_t)*4,
 		controlName
 	);
 
 	dw = GetLastError();
 
-	controller = (size_t*)MapViewOfFile(hControl, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(size_t) * 3);
+	controller = (size_t*)MapViewOfFile(hControl, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(size_t) * 4);
 	
 	if (!(dw == ERROR_ALREADY_EXISTS))
 	{
 		controller[0] = 0;
 		controller[1] = 0;
 		controller[2] = 0;
+		controller[4] = buffSize;
 	}
 
 	HEAD = controller;
 	TAIL = HEAD + 1;
 	CLIENTS = TAIL + 1;
+	FREEMEM = &controller[4];
 
 	if (!isProducer)
 	{
-		//WaitForSingleObject(hMutex, INFINITE); //mutexlock
+		WaitForSingleObject(hClientMutex, INFINITE); //mutexlock
 		*CLIENTS += 1;
-		//ReleaseMutex(hMutex); //mutexunlock
+		ReleaseMutex(hClientMutex); //mutexunlock
 	}
 }
 
@@ -81,26 +94,20 @@ CircleBuffer::~CircleBuffer()
 
 bool CircleBuffer::push(const void * msg, size_t length)
 {
+	
 	static size_t msgId = 0;
-	static size_t freeMem = buffSize;
+	WaitForSingleObject(hMemMutex, INFINITE);
+	size_t freeMem = *FREEMEM;
+	ReleaseMutex(hMemMutex);
 	static size_t lastTail = *TAIL;
-	size_t msgSize = roundUp(length + sizeOfHeader);
+	size_t msgSize = roundUp(length + sizeOfHeader, chunkSize);
 	size_t localTail = *TAIL;
 
-	if (localTail > *HEAD)
-		freeMem = (localTail - *HEAD);
-	else if (localTail < *HEAD)
-		freeMem = ((buffSize - *HEAD) - localTail);
-	//else if (localTail == *HEAD && lastTail != localTail)
-	//	freeMem = buffSize;
 
-
-	if (msgSize <= freeMem)
+	if (msgSize <= (freeMem-1))
 	{
+
 		lastTail = localTail;
-		size_t nextPos = (*HEAD + msgSize) % buffSize;
-		if (nextPos == localTail)
-			return false;
 
 		Header h
 		{
@@ -113,8 +120,12 @@ bool CircleBuffer::push(const void * msg, size_t length)
 		memcpy(mData + *HEAD, &h, sizeOfHeader);
 		memcpy((mData + *HEAD + sizeOfHeader), msg, length);
 		freeMem -= msgSize;
+		
+		WaitForSingleObject(hMemMutex, INFINITE);
+		*FREEMEM = freeMem;
+		ReleaseMutex(hMemMutex);
+		*HEAD = (*HEAD + msgSize) % buffSize;;
 
-		*HEAD = nextPos;
 		return true;
 	}
 	else
@@ -123,27 +134,28 @@ bool CircleBuffer::push(const void * msg, size_t length)
 
 bool CircleBuffer::pop(char * msg, size_t & length)
 {
+	
 	static size_t localTail = *TAIL;
-	//static Header * h = nullptr;
 
 	if (localTail != *HEAD)
 	{	
+	
 		Header * h = (Header*)(mData + localTail);
 		length = h->length;
-		size_t nextPos = (localTail + length + h->padding) % buffSize;
-		if (nextPos == *HEAD)
-			return false;
 
 		memcpy(msg, mData + localTail + sizeOfHeader, length);
 
-		localTail = nextPos;
+		localTail = (localTail + length + h->padding) % buffSize;
 
-		WaitForSingleObject(hMutex, INFINITE);
+		WaitForSingleObject(hReadMutex, INFINITE);
 		h->readCount++;
-		ReleaseMutex(hMutex);
 
 		if (h->readCount == *CLIENTS)
+		{
+			*FREEMEM = *FREEMEM + (length + h->padding);
 			*TAIL = localTail;
+		}
+		ReleaseMutex(hReadMutex);
 		return	true;
 	}
 	else
